@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="kz">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TimeLeak Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/styles.css" />
+    <script src="/config.js"></script>
+  </head>
+  <body class="auth-page">
+    <div class="page-noise" aria-hidden="true"></div>
+
+    <main class="auth-layout">
+      <section class="hero-panel" aria-labelledby="hero-title">
+        <header class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <p class="brand-name">TimeLeak Admin</p>
+            <p class="brand-subtitle" data-i18n="brand_subtitle"></p>
+          </div>
+        </header>
+
+        <div class="hero-copy">
+          <p class="eyebrow" data-i18n="auth_eyebrow"></p>
+          <h1 id="hero-title" class="hero-title" data-i18n="auth_hero_title"></h1>
+          <p class="hero-description" data-i18n="auth_hero_copy"></p>
+        </div>
+
+        <div class="hero-list">
+          <p class="hero-list-title" data-i18n="auth_points_label"></p>
+          <ul>
+            <li data-i18n="auth_point_one"></li>
+            <li data-i18n="auth_point_two"></li>
+            <li data-i18n="auth_point_three"></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="auth-column">
+        <div class="auth-card" aria-labelledby="login-title">
+          <div class="auth-card-head">
+            <span class="eyebrow-badge" data-i18n="auth_badge"></span>
+            <h2 id="login-title" class="panel-title" data-i18n="login_title"></h2>
+            <p class="panel-copy" data-i18n="login_subtitle"></p>
+          </div>
+
+          <form id="login-form" class="form-grid" novalidate>
+            <div class="field">
+              <label for="username" data-i18n="username_label"></label>
+              <input id="username" name="username" type="text" autocomplete="username" required data-i18n-placeholder="username_placeholder" />
+            </div>
+            <div class="field">
+              <label for="password" data-i18n="password_label"></label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required data-i18n-placeholder="password_placeholder" />
+            </div>
+            <button id="login-submit" type="submit" class="btn btn-primary btn-block" data-i18n="login_button"></button>
+          </form>
+
+          <div class="auth-card-foot">
+            <div class="field compact-field">
+              <label for="language-select" data-i18n="language_label"></label>
+              <select id="language-select" aria-label="Language">
+                <option value="kz" data-i18n="lang_kz"></option>
+                <option value="ru" data-i18n="lang_ru"></option>
+                <option value="en" data-i18n="lang_en"></option>
+              </select>
+            </div>
+            <p class="helper-text" data-i18n="login_hint"></p>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <div id="toast-container" class="toast-wrap" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module" src="/assets/js/login.js"></script>
+  </body>
+</html>
