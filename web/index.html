@@ -28,25 +28,28 @@
           </div>
         </div>
 
-        <div class="sidebar-card nav-panel">
+        <div class="sidebar-card workspace-panel">
           <p class="section-label" data-i18n="sidebar_label"></p>
-          <nav class="nav-list" aria-label="Primary">
-            <button type="button" class="nav-item" disabled data-i18n="nav_overview"></button>
-            <button type="button" class="nav-item is-active" data-i18n="nav_campaigns"></button>
-            <button type="button" class="nav-item" disabled data-i18n="nav_reports"></button>
-            <button type="button" class="nav-item" disabled data-i18n="nav_settings"></button>
-          </nav>
-        </div>
-
-        <div class="sidebar-card focus-panel">
-          <p class="section-label" data-i18n="sidebar_focus_label"></p>
-          <h2 class="panel-title" data-i18n="sidebar_focus_title"></h2>
-          <p class="panel-copy" data-i18n="sidebar_focus_copy"></p>
+          <div class="workspace-list" aria-label="Workspace summary">
+            <div class="workspace-item">
+              <p class="workspace-item-title" data-i18n="nav_campaigns"></p>
+              <p class="workspace-item-copy" data-i18n="sidebar_inventory_copy"></p>
+            </div>
+            <div class="workspace-item">
+              <p class="workspace-item-title" data-i18n="filter_active"></p>
+              <p class="workspace-item-copy" data-i18n="sidebar_filter_copy"></p>
+            </div>
+            <div class="workspace-item">
+              <p class="workspace-item-title" data-i18n="inspector_label"></p>
+              <p class="workspace-item-copy" data-i18n="sidebar_inspector_copy"></p>
+            </div>
+          </div>
         </div>
 
         <div class="sidebar-card session-panel">
           <p class="section-label" data-i18n="session_label"></p>
           <div class="session-user-badge" id="session-user-badge">Admin</div>
+          <p class="panel-copy" data-i18n="session_copy"></p>
         </div>
       </aside>
 

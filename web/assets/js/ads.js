@@ -256,9 +256,6 @@ async function fetchAds() {
     }
 
     handleAPIError(error);
-    state.ads = [];
-    state.total = 0;
-    syncVisibleAds();
   } finally {
     if (requestID === state.fetchSequence) {
       setLoading(false);
@@ -599,7 +596,7 @@ function renderInspector() {
 
   setMediaPreview(elements.inspectorMedia, elements.inspectorImage, elements.inspectorFallback, ad.title, ad.image_url);
   elements.inspectorTitle.textContent = ad.title || "-";
-  elements.inspectorID.textContent = "";
+  elements.inspectorID.textContent = t("inspector_id", { id: ad.id });
   applyStatusChip(elements.inspectorStatus, ad.is_active);
   elements.inspectorStatusText.textContent = ad.is_active ? t("status_active") : t("status_inactive");
   elements.inspectorCreated.textContent = formatDateTime(ad.created_at, language);
@@ -837,7 +834,7 @@ async function onToggleStatus(ad, button) {
 }
 
 function handleAPIError(error) {
-  if (error?.status === 401 || error?.status === 403) {
+  if (error?.status === 401) {
     redirectToLogin();
     return;
   }

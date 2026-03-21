@@ -60,6 +60,11 @@ function resolveStatusMessage(status) {
 
 let refreshPromise = null;
 
+function buildAPIError(response, payload) {
+  const apiError = payload && typeof payload === "object" && "error" in payload ? String(payload.error) : "";
+  return new APIError(resolveStatusMessage(response.status), response.status, apiError, payload);
+}
+
 function buildRequestInit(method, headers, body, signal) {
   return {
     method,
@@ -100,13 +105,11 @@ async function refreshAccessToken() {
       );
 
       if (!response.ok) {
-        const apiError = payload && typeof payload === "object" && "error" in payload ? String(payload.error) : "";
-
         if (response.status === 401 || response.status === 403) {
           expireSession();
         }
 
-        throw new APIError(resolveStatusMessage(response.status), response.status, apiError, payload);
+        throw buildAPIError(response, payload);
       }
 
       if (!payload?.access_token || !payload?.expires_in_seconds) {
@@ -162,23 +165,24 @@ async function request(path, options = {}) {
   }
 
   const url = buildURL(path);
+  let retriedAfterRefresh = false;
   let { response, payload } = await fetchJSON(url, buildRequestInit(method, requestHeaders, body, signal));
+
   if (!response.ok && authRequired && response.status === 401 && getRefreshToken() && path !== "/api/v1/auth/refresh") {
     const refreshedToken = await refreshAccessToken();
     if (refreshedToken) {
       requestHeaders.set("Authorization", `Bearer ${refreshedToken}`);
+      retriedAfterRefresh = true;
       ({ response, payload } = await fetchJSON(url, buildRequestInit(method, requestHeaders, body, signal)));
     }
   }
 
   if (!response.ok) {
-    const apiError = payload && typeof payload === "object" && "error" in payload ? String(payload.error) : "";
-
-    if (response.status === 401 || response.status === 403) {
+    if (authRequired && response.status === 401 && (retriedAfterRefresh || !getRefreshToken())) {
       expireSession();
     }
 
-    throw new APIError(resolveStatusMessage(response.status), response.status, apiError, payload);
+    throw buildAPIError(response, payload);
   }
 
   return payload;

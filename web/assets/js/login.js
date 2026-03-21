@@ -61,6 +61,11 @@ async function onSubmit(event) {
       redirectToDashboard();
     }, 200);
   } catch (error) {
+    if (error?.status === 401) {
+      showToast("error", t("login_invalid_credentials"));
+      return;
+    }
+
     showToast("error", mapErrorMessage(error, t));
   } finally {
     setButtonPending(submitButton, false);
