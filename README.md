@@ -19,18 +19,26 @@ Server starts at:
 - `http://localhost:8080/dashboard`
 - `http://localhost:8080/health`
 - `http://localhost:8080/config.js`
+- `http://localhost:8080/privacy`
 
 ## Environment Variables
 
 - `PORT` (default: `8080`)
 - `API_BASE_URL` (default: `https://api.timeleak.kz`)
 - `STATIC_DIR` (default: `web`)
+- `PRIVACY_PDF_PATH` (default: `offerta/time-leak-offerta.pdf`)
 - `SHUTDOWN_TIMEOUT_SECONDS` (default: `10`)
 
 Example:
 
 ```bash
 PORT=8080 API_BASE_URL=https://api.timeleak.kz go run ./cmd/admin
+```
+
+Privacy policy PDF example:
+
+```bash
+PRIVACY_PDF_PATH=offerta/time-leak-offerta.pdf go run ./cmd/admin
 ```
 
 ## Login Flow
@@ -79,46 +87,49 @@ PORT=8080 API_BASE_URL=https://api.timeleak.kz go run ./cmd/admin
 
 1. Health check
    - `GET /health` returns `200` and `{ "status": "ok" }`
-2. Runtime config
+2. Privacy policy PDF
+   - `GET /privacy` returns `200`
+   - browser opens `time-leak-offerta.pdf` inline by URL
+3. Runtime config
    - Open `/config.js` and verify `API_BASE_URL`
-3. Login success
+4. Login success
    - Use valid credentials
    - Verify redirect to `/dashboard`
    - Verify token + expiry saved in `localStorage`
-4. Login failure
+5. Login failure
    - Use invalid credentials
    - Verify error toast (`401 unauthorized`)
-5. List ads
+6. List ads
    - Dashboard auto-loads ads
    - Table displays required fields
-6. Filter + pagination
+7. Filter + pagination
    - Switch all/active/inactive
    - Change limit
    - Use prev/next and apply offset
-7. Create ad
+8. Create ad
    - Submit valid payload
    - Verify success toast and list refresh
-8. Create ad validation
+9. Create ad validation
    - Empty required fields -> validation error
    - Invalid URL (non-http/https) -> validation error
-9. Edit ad (partial)
+10. Edit ad (partial)
    - Open edit modal
    - Change one field only
    - Verify only changed data is submitted and updated
-10. Quick status toggle
+11. Quick status toggle
    - Click active/inactive badge
    - Verify status updates via PUT
-11. Delete ad
+12. Delete ad
    - Delete with confirmation dialog
    - Verify success toast and row removal
-12. Token expiry behavior
+13. Token expiry behavior
    - Force-expire token in `localStorage`
    - If `refresh_token` exists, trigger API action and verify request is retried successfully
    - If no `refresh_token` exists, verify final `401` clears session and redirects to login
-13. 401/403 handling
+14. 401/403 handling
    - Use invalid token and trigger API request
    - Verify redirect to login only after refresh is unavailable or rejected
-14. Multi-language
+15. Multi-language
    - Switch KZ/RU/EN on login and dashboard
    - Verify translated labels/messages
 

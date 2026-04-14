@@ -9,6 +9,7 @@ const (
 	defaultPort            = "8080"
 	defaultAPIBaseURL      = "https://api.timeleak.kz"
 	defaultStaticDir       = "web"
+	defaultPrivacyPDFPath  = "offerta/time-leak-offerta.pdf"
 	defaultShutdownTimeout = 10 * time.Second
 )
 
@@ -16,6 +17,7 @@ type Config struct {
 	Port            string
 	APIBaseURL      string
 	StaticDir       string
+	PrivacyPDFPath  string
 	ShutdownTimeout time.Duration
 }
 
@@ -24,6 +26,7 @@ func Load() Config {
 		Port:            getEnv("PORT", defaultPort),
 		APIBaseURL:      getEnv("API_BASE_URL", defaultAPIBaseURL),
 		StaticDir:       getEnv("STATIC_DIR", defaultStaticDir),
+		PrivacyPDFPath:  getEnv("PRIVACY_PDF_PATH", defaultPrivacyPDFPath),
 		ShutdownTimeout: defaultShutdownTimeout,
 	}
 

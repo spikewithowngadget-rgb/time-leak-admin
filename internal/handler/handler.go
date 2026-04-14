@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"time-leak-admin/config"
@@ -47,6 +48,48 @@ func (h *Handler) RuntimeConfigJS(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write([]byte(payload))
+}
+
+func (h *Handler) PrivacyPolicy(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	filePath := filepath.Clean(h.cfg.PrivacyPDFPath)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			http.NotFound(w, r)
+			return
+		}
+
+		h.logger.Error("unable to open privacy pdf", "path", filePath, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		h.logger.Error("unable to stat privacy pdf", "path", filePath, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	fileName := filepath.Base(filePath)
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", "inline; filename="+strconv.Quote(fileName))
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+
+	http.ServeContent(w, r, fileName, info.ModTime(), file)
 }
 
 func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {

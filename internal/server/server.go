@@ -19,6 +19,7 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", h.Health)
 	mux.HandleFunc("/config.js", h.RuntimeConfigJS)
+	mux.HandleFunc("/privacy", h.PrivacyPolicy)
 	mux.HandleFunc("/login", h.LoginPage)
 	mux.HandleFunc("/login.html", h.LoginPage)
 	mux.HandleFunc("/dashboard", h.DashboardPage)
