@@ -2,7 +2,7 @@ import { deactivateUserDevice, listDevices, listUserLocations, listAuthEvents } 
 import { redirectToLogin } from "./auth.js";
 import { getYandexMapsAPIKey } from "./config.js";
 import { getLanguage, t } from "./i18n.js";
-import { clearMap, createMap, fitToPoints, renderLocationPoints } from "./map.js?v=20260531-yandex-v21";
+import { clearMap, createMap, fitToPoints, renderLocationPoints } from "./map.js?v=20260531-yandex-v3";
 import {
   clearChildren,
   el,

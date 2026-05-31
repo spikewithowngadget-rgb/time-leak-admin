@@ -1,17 +1,20 @@
-// Reusable Yandex Maps JavaScript API 2.1 helper.
+// Reusable Yandex Maps JavaScript API v3 helper.
 //
 // Responsibilities:
-//  - Load the 2.1 script exactly once and wait for ymaps.ready.
+//  - Load the v3 script exactly once and wait for ymaps3.ready.
 //  - Create / update / clear / fit / destroy a map instance.
-//  - Convert backend { latitude, longitude } -> Yandex [latitude, longitude].
-//  - Cluster many points through the built-in Clusterer.
+//  - Convert backend { latitude, longitude } -> Yandex [longitude, latitude].
+//  - Cluster many points through the official ymaps3 clusterer package.
 //  - Fail gracefully on missing API key, script load failure or empty data.
 //
-// IMPORTANT: Yandex Maps 2.1 expects coordinates as [latitude, longitude].
+// IMPORTANT: Yandex Maps v3 expects coordinates as [longitude, latitude].
 
-// Default view centers on Kazakhstan. Stored as [latitude, longitude].
-export const KAZAKHSTAN_CENTER = [48.0, 67.0];
-export const KAZAKHSTAN_ZOOM = 5;
+// Default view centers on Kazakhstan. Stored as [longitude, latitude].
+export const KAZAKHSTAN_CENTER = [67.0, 48.0];
+export const KAZAKHSTAN_ZOOM = 4.2;
+
+const POINT_SOURCE_ID = "timeleak-location-points";
+const PACKAGE_CDN = "https://cdn.jsdelivr.net/npm/{package}";
 
 export class MapError extends Error {
   constructor(code, message) {
@@ -22,6 +25,7 @@ export class MapError extends Error {
 }
 
 let loadPromise = null;
+let packagesRegistered = false;
 
 function langToYandex(lang) {
   switch (lang) {
@@ -34,9 +38,9 @@ function langToYandex(lang) {
   }
 }
 
-// toYandexCoords converts a backend point to Yandex [latitude, longitude].
+// toYandexCoords converts a backend point to Yandex [longitude, latitude].
 export function toYandexCoords(point) {
-  return [Number(point.latitude), Number(point.longitude)];
+  return [Number(point.longitude), Number(point.latitude)];
 }
 
 function hasValidCoords(point) {
@@ -45,43 +49,31 @@ function hasValidCoords(point) {
   return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
 }
 
-function waitForYmapsReady(ymaps) {
-  return new Promise((resolve, reject) => {
-    let done = false;
-    const timeoutID = window.setTimeout(() => {
-      if (!done) {
-        done = true;
-        reject(new MapError("script_timeout", "Yandex Maps initialization timed out"));
-      }
-    }, 15000);
+function waitForYmapsReady(ymaps3) {
+  if (!ymaps3 || !ymaps3.ready || typeof ymaps3.ready.then !== "function") {
+    return Promise.reject(new MapError("script_invalid", "Yandex Maps v3 did not initialize"));
+  }
 
-    const complete = () => {
-      if (done) {
-        return;
-      }
-      done = true;
-      window.clearTimeout(timeoutID);
-      resolve(ymaps);
-    };
-
-    const fail = (error) => {
-      if (done) {
-        return;
-      }
-      done = true;
-      window.clearTimeout(timeoutID);
-      reject(error instanceof Error ? error : new MapError("script_invalid", "Yandex Maps did not initialize"));
-    };
-
-    try {
-      ymaps.ready(complete, fail);
-    } catch (error) {
-      fail(error);
-    }
-  });
+  return ymaps3.ready.then(() => ymaps3);
 }
 
-// loadYandexMaps loads the 2.1 script once and resolves with the ymaps global.
+function registerYmapsPackages(ymaps3) {
+  if (packagesRegistered || !ymaps3.import || typeof ymaps3.import.registerCdn !== "function") {
+    return;
+  }
+
+  try {
+    ymaps3.import.registerCdn(PACKAGE_CDN, [
+      "@yandex/ymaps3-clusterer@0.0.1",
+      "@yandex/ymaps3-default-ui-theme@0.0",
+    ]);
+    packagesRegistered = true;
+  } catch {
+    // Packages can still be available through Yandex's own module resolver.
+  }
+}
+
+// loadYandexMaps loads the v3 script once and resolves with the ymaps3 global.
 export function loadYandexMaps(apiKey, lang = "en") {
   const key = String(apiKey || "").trim();
   if (!key) {
@@ -93,25 +85,25 @@ export function loadYandexMaps(apiKey, lang = "en") {
   }
 
   loadPromise = new Promise((resolve, reject) => {
-    if (window.ymaps) {
-      waitForYmapsReady(window.ymaps).then(resolve).catch(reject);
+    if (window.ymaps3) {
+      waitForYmapsReady(window.ymaps3).then(resolve).catch(reject);
       return;
     }
 
     const script = document.createElement("script");
-    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=${langToYandex(lang)}&load=package.full`;
+    script.src = `https://api-maps.yandex.ru/v3/?apikey=${encodeURIComponent(key)}&lang=${langToYandex(lang)}`;
     script.async = true;
-    script.dataset.timeleakYandexMaps = "2.1";
+    script.dataset.timeleakYandexMaps = "3";
     script.onload = () => {
-      if (!window.ymaps) {
-        reject(new MapError("script_invalid", "Yandex Maps did not initialize"));
+      if (!window.ymaps3) {
+        reject(new MapError("script_invalid", "Yandex Maps v3 did not initialize"));
         return;
       }
-      waitForYmapsReady(window.ymaps).then(resolve).catch(reject);
+      waitForYmapsReady(window.ymaps3).then(resolve).catch(reject);
     };
     script.onerror = () => {
       loadPromise = null; // allow a later retry
-      reject(new MapError("script_load_failed", "Failed to load Yandex Maps script"));
+      reject(new MapError("script_load_failed", "Failed to load Yandex Maps v3 script"));
     };
     document.head.appendChild(script);
   });
@@ -123,28 +115,67 @@ export function loadYandexMaps(apiKey, lang = "en") {
   return loadPromise;
 }
 
-// createMap initializes a Yandex 2.1 map inside the container. Returns a controller object.
+function buildClusterMarkerElement(count) {
+  const el = document.createElement("div");
+  el.className = "map-cluster-marker";
+  el.textContent = String(count);
+  return el;
+}
+
+function buildPointMarkerElement() {
+  const el = document.createElement("div");
+  el.className = "map-point-marker";
+  return el;
+}
+
+function addMapChild(map, child) {
+  if (child) {
+    map.addChild(child);
+  }
+}
+
+// createMap initializes a YMap v3 instance inside the container. Returns a controller object.
 export async function createMap(container, { center = KAZAKHSTAN_CENTER, zoom = KAZAKHSTAN_ZOOM, lang = "en", apiKey } = {}) {
-  const ymaps = await loadYandexMaps(apiKey, lang);
+  const ymaps3 = await loadYandexMaps(apiKey, lang);
+  registerYmapsPackages(ymaps3);
+
+  const {
+    YMap,
+    YMapDefaultSchemeLayer,
+    YMapDefaultFeaturesLayer,
+    YMapControls,
+    YMapFeatureDataSource,
+    YMapLayer,
+  } = ymaps3;
 
   // Clear any previous content (e.g. an old map or placeholder).
   container.innerHTML = "";
 
-  const map = new ymaps.Map(
-    container,
-    {
-      center,
-      zoom,
-      controls: ["zoomControl"],
-    },
-    {
-      suppressMapOpenBlock: true,
-      yandexMapDisablePoiInteractivity: true,
-    },
-  );
+  const map = new YMap(container, {
+    location: { center, zoom },
+    behaviors: ["drag", "scrollZoom", "pinchZoom", "dblClick"],
+  });
+
+  addMapChild(map, new YMapDefaultSchemeLayer({}));
+  addMapChild(map, new YMapDefaultFeaturesLayer({ zIndex: 1700 }));
+  if (YMapFeatureDataSource && YMapLayer) {
+    addMapChild(map, new YMapFeatureDataSource({ id: POINT_SOURCE_ID }));
+    addMapChild(map, new YMapLayer({ source: POINT_SOURCE_ID, type: "markers", zIndex: 1800 }));
+  }
+
+  try {
+    const { YMapZoomControl } = await ymaps3.import("@yandex/ymaps3-default-ui-theme");
+    if (YMapControls && YMapZoomControl) {
+      const controls = new YMapControls({ position: "right" });
+      controls.addChild(new YMapZoomControl({}));
+      map.addChild(controls);
+    }
+  } catch {
+    // Zoom control is optional; ignore if the UI package is unavailable.
+  }
 
   const controller = {
-    ymaps,
+    ymaps3,
     map,
     clusterer: null,
     markers: [],
@@ -152,48 +183,58 @@ export async function createMap(container, { center = KAZAKHSTAN_CENTER, zoom = 
     destroyed: false,
   };
 
-  if (typeof ymaps.Clusterer === "function") {
-    controller.clusterer = new ymaps.Clusterer({
-      clusterDisableClickZoom: false,
-      clusterHideIconOnBalloonOpen: false,
-      clusterOpenBalloonOnClick: false,
-      groupByCoordinates: false,
-      gridSize: 64,
-      preset: "islands#blueClusterIcons",
-    });
-    map.geoObjects.add(controller.clusterer);
-  }
-
+  // Try to attach the clusterer package. If it is unavailable we fall back to
+  // plain HTML markers in renderLocationPoints.
   try {
-    map.behaviors.enable(["drag", "scrollZoom", "multiTouch", "dblClickZoom"]);
-    map.container.fitToViewport();
+    const clustererPkg = await ymaps3.import("@yandex/ymaps3-clusterer");
+    const { YMapClusterer, clusterByGrid } = clustererPkg;
+    const { YMapMarker } = ymaps3;
+
+    const marker = (feature) => {
+      const el = buildPointMarkerElement();
+      el.addEventListener("click", () => {
+        if (controller.onPointClick) {
+          controller.onPointClick(feature.properties.point);
+        }
+      });
+
+      return new YMapMarker(
+        { coordinates: feature.geometry.coordinates, source: POINT_SOURCE_ID },
+        el,
+      );
+    };
+
+    const cluster = (coordinates, features) => {
+      const el = buildClusterMarkerElement(features.length);
+      el.addEventListener("click", () => {
+        const currentZoom = Number(controller.map.zoom || controller.map.location?.zoom || KAZAKHSTAN_ZOOM);
+        controller.map.update({ location: { center: coordinates, zoom: currentZoom + 2, duration: 300 } });
+      });
+
+      return new YMapMarker({ coordinates, source: POINT_SOURCE_ID }, el);
+    };
+
+    controller.clusterer = new YMapClusterer({
+      method: clusterByGrid({ gridSize: 64 }),
+      features: [],
+      marker,
+      cluster,
+    });
+    map.addChild(controller.clusterer);
   } catch {
-    /* optional map behavior */
+    controller.clusterer = null;
   }
 
   return controller;
 }
 
-function pointsToPlacemarks(controller, points) {
-  return points.filter(hasValidCoords).map((point) => {
-    const placemark = new controller.ymaps.Placemark(
-      toYandexCoords(point),
-      {},
-      {
-        iconColor: "#2563ff",
-        openBalloonOnClick: false,
-        preset: "islands#blueCircleDotIcon",
-      },
-    );
-
-    placemark.events.add("click", () => {
-      if (controller.onPointClick) {
-        controller.onPointClick(point);
-      }
-    });
-
-    return placemark;
-  });
+function pointsToFeatures(points) {
+  return points.filter(hasValidCoords).map((point) => ({
+    type: "Feature",
+    id: String(point.id),
+    geometry: { type: "Point", coordinates: toYandexCoords(point) },
+    properties: { point },
+  }));
 }
 
 // renderLocationPoints replaces the rendered points without recreating the map.
@@ -202,25 +243,38 @@ export function renderLocationPoints(controller, points = [], onPointClick) {
     return;
   }
   controller.onPointClick = onPointClick || controller.onPointClick;
+  const features = pointsToFeatures(points);
 
   if (controller.clusterer) {
-    controller.clusterer.removeAll();
-    controller.markers = pointsToPlacemarks(controller, points);
-    controller.clusterer.add(controller.markers);
+    controller.clusterer.update({ features });
     return;
   }
 
-  // Fallback path: plain markers, capped to keep the map responsive.
+  // Fallback path: plain HTML markers, capped to keep the map responsive.
   clearMarkers(controller);
-  const capped = pointsToPlacemarks(controller, points).slice(0, 500);
-  capped.forEach((placemark) => controller.map.geoObjects.add(placemark));
-  controller.markers = capped;
+  const { YMapMarker } = controller.ymaps3;
+  const capped = features.slice(0, 500);
+  capped.forEach((feature) => {
+    const el = buildPointMarkerElement();
+    el.addEventListener("click", () => {
+      if (controller.onPointClick) {
+        controller.onPointClick(feature.properties.point);
+      }
+    });
+
+    const marker = new YMapMarker(
+      { coordinates: feature.geometry.coordinates, source: POINT_SOURCE_ID },
+      el,
+    );
+    controller.map.addChild(marker);
+    controller.markers.push(marker);
+  });
 }
 
 function clearMarkers(controller) {
   controller.markers.forEach((marker) => {
     try {
-      controller.map.geoObjects.remove(marker);
+      controller.map.removeChild(marker);
     } catch {
       /* already detached */
     }
@@ -234,19 +288,10 @@ export function clearMap(controller) {
     return;
   }
   if (controller.clusterer) {
-    controller.clusterer.removeAll();
-    controller.markers = [];
+    controller.clusterer.update({ features: [] });
     return;
   }
   clearMarkers(controller);
-}
-
-function setMapCenter(controller, center, zoom) {
-  try {
-    controller.map.setCenter(center, zoom, { duration: 300 });
-  } catch {
-    /* ignore */
-  }
 }
 
 // fitToPoints centers/zooms the map to contain the supplied points.
@@ -256,47 +301,44 @@ export function fitToPoints(controller, points = []) {
   }
   const valid = points.filter(hasValidCoords);
   if (valid.length === 0) {
-    setMapCenter(controller, KAZAKHSTAN_CENTER, KAZAKHSTAN_ZOOM);
+    controller.map.update({ location: { center: KAZAKHSTAN_CENTER, zoom: KAZAKHSTAN_ZOOM, duration: 300 } });
     return;
   }
   if (valid.length === 1) {
-    setMapCenter(controller, toYandexCoords(valid[0]), 11);
+    controller.map.update({ location: { center: toYandexCoords(valid[0]), zoom: 11, duration: 300 } });
     return;
   }
 
-  let minLat = Infinity;
   let minLon = Infinity;
-  let maxLat = -Infinity;
+  let minLat = Infinity;
   let maxLon = -Infinity;
+  let maxLat = -Infinity;
   valid.forEach((point) => {
-    const [lat, lon] = toYandexCoords(point);
-    minLat = Math.min(minLat, lat);
-    maxLat = Math.max(maxLat, lat);
+    const [lon, lat] = toYandexCoords(point);
     minLon = Math.min(minLon, lon);
     maxLon = Math.max(maxLon, lon);
+    minLat = Math.min(minLat, lat);
+    maxLat = Math.max(maxLat, lat);
   });
 
   // Pad the bounds slightly so markers are not flush against the edge.
-  const padLat = Math.max((maxLat - minLat) * 0.1, 0.05);
   const padLon = Math.max((maxLon - minLon) * 0.1, 0.05);
-  const bounds = [
-    [minLat - padLat, minLon - padLon],
-    [maxLat + padLat, maxLon + padLon],
-  ];
+  const padLat = Math.max((maxLat - minLat) * 0.1, 0.05);
 
   try {
-    const result = controller.map.setBounds(bounds, {
-      checkZoomRange: true,
-      duration: 300,
-      zoomMargin: [40, 40, 40, 40],
+    controller.map.update({
+      location: {
+        bounds: [
+          [minLon - padLon, maxLat + padLat],
+          [maxLon + padLon, minLat - padLat],
+        ],
+        duration: 300,
+      },
     });
-    if (result && typeof result.catch === "function") {
-      result.catch(() => {
-        setMapCenter(controller, [(minLat + maxLat) / 2, (minLon + maxLon) / 2], 5);
-      });
-    }
   } catch {
-    setMapCenter(controller, [(minLat + maxLat) / 2, (minLon + maxLon) / 2], 5);
+    const centerLon = (minLon + maxLon) / 2;
+    const centerLat = (minLat + maxLat) / 2;
+    controller.map.update({ location: { center: [centerLon, centerLat], zoom: 5, duration: 300 } });
   }
 }
 
@@ -306,9 +348,6 @@ export function destroyMap(controller) {
     return;
   }
   try {
-    if (controller.clusterer) {
-      controller.clusterer.removeAll();
-    }
     controller.map.destroy();
   } catch {
     /* ignore */
