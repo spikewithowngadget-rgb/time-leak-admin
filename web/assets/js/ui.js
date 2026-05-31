@@ -60,6 +60,120 @@ export function clearChildren(element) {
   }
 }
 
+// el is a small helper to build a DOM node with attributes and children.
+export function el(tag, options = {}, children = []) {
+  const node = document.createElement(tag);
+  const { class: className, text, html, dataset, ...attrs } = options;
+  if (className) {
+    node.className = className;
+  }
+  if (text !== undefined) {
+    node.textContent = text;
+  }
+  if (html !== undefined) {
+    node.innerHTML = html;
+  }
+  if (dataset) {
+    Object.entries(dataset).forEach(([key, value]) => {
+      node.dataset[key] = value;
+    });
+  }
+  Object.entries(attrs).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === false) {
+      return;
+    }
+    node.setAttribute(key, value === true ? "" : String(value));
+  });
+  (Array.isArray(children) ? children : [children]).forEach((child) => {
+    if (child === null || child === undefined) {
+      return;
+    }
+    node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+  });
+  return node;
+}
+
+export function debounce(fn, wait = 300) {
+  let timer = null;
+  return (...args) => {
+    if (timer) {
+      window.clearTimeout(timer);
+    }
+    timer = window.setTimeout(() => {
+      timer = null;
+      fn(...args);
+    }, wait);
+  };
+}
+
+export function formatRelativeTime(value, language) {
+  if (!value) {
+    return "-";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  const localeMap = { kz: "kk-KZ", ru: "ru-RU", en: "en-US" };
+  const locale = localeMap[language] || "en-US";
+  const diffMs = date.getTime() - Date.now();
+  const absSec = Math.abs(diffMs) / 1000;
+  const units = [
+    ["year", 31536000],
+    ["month", 2592000],
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+    ["second", 1],
+  ];
+
+  try {
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+    for (const [unit, seconds] of units) {
+      if (absSec >= seconds || unit === "second") {
+        return rtf.format(Math.round(diffMs / 1000 / seconds), unit);
+      }
+    }
+  } catch {
+    /* fall back below */
+  }
+  return formatDateTime(value, language);
+}
+
+export function formatCoordinate(latitude, longitude) {
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return "-";
+  }
+  return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+}
+
+export function emptyState(title, copy) {
+  return el("div", { class: "empty-state" }, [
+    el("h3", { class: "empty-title", text: title }),
+    el("p", { class: "empty-copy", text: copy }),
+  ]);
+}
+
+export function errorState(title, copy, retryLabel, onRetry) {
+  const retry = el("button", { class: "btn btn-secondary", type: "button", text: retryLabel });
+  retry.addEventListener("click", onRetry);
+  return el("div", { class: "empty-state error-state" }, [
+    el("h3", { class: "empty-title", text: title }),
+    el("p", { class: "empty-copy", text: copy }),
+    retry,
+  ]);
+}
+
+export function loadingState(text) {
+  return el("div", { class: "loading-state" }, [
+    el("span", { class: "spinner", "aria-hidden": "true" }),
+    el("span", { text }),
+  ]);
+}
+
 export function formatDateTime(value, language) {
   if (!value) {
     return "-";

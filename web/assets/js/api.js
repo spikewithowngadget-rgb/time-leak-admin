@@ -228,6 +228,80 @@ export function deleteAd(id) {
   });
 }
 
+function appendIf(query, key, value) {
+  if (value === undefined || value === null || value === "") {
+    return;
+  }
+  query.set(key, String(value));
+}
+
+export function getAnalyticsOverview(signal) {
+  return request("/api/v1/admin/analytics/overview", { signal });
+}
+
+export function getGeoAnalytics({ from, to, platform, source, active, limit, signal } = {}) {
+  const query = new URLSearchParams();
+  appendIf(query, "from", from);
+  appendIf(query, "to", to);
+  if (platform && platform !== "all") {
+    query.set("platform", platform);
+  }
+  if (source && source !== "all") {
+    query.set("source", source);
+  }
+  if (active === true) {
+    query.set("active", "true");
+  }
+  query.set("limit", String(limit || 1000));
+  return request(`/api/v1/admin/analytics/geo?${query.toString()}`, { signal });
+}
+
+export function listDevices({ limit, offset, platform, active, search, signal } = {}) {
+  const query = new URLSearchParams();
+  query.set("limit", String(limit ?? 20));
+  query.set("offset", String(offset ?? 0));
+  if (platform && platform !== "all") {
+    query.set("platform", platform);
+  }
+  if (typeof active === "boolean") {
+    query.set("active", String(active));
+  }
+  appendIf(query, "search", search);
+  return request(`/api/v1/admin/devices?${query.toString()}`, { signal });
+}
+
+export function listUserDevices(userID, signal) {
+  return request(`/api/v1/admin/users/${encodeURIComponent(userID)}/devices`, { signal });
+}
+
+export function deactivateUserDevice(userID, deviceID) {
+  return request(
+    `/api/v1/admin/users/${encodeURIComponent(userID)}/devices/${encodeURIComponent(deviceID)}/deactivate`,
+    { method: "POST" },
+  );
+}
+
+export function listUserLocations(userID, { limit, offset, from, to, signal } = {}) {
+  const query = new URLSearchParams();
+  query.set("limit", String(limit ?? 20));
+  query.set("offset", String(offset ?? 0));
+  appendIf(query, "from", from);
+  appendIf(query, "to", to);
+  return request(`/api/v1/admin/users/${encodeURIComponent(userID)}/locations?${query.toString()}`, { signal });
+}
+
+export function listAuthEvents({ phone, userID, eventType, limit, offset, from, to, signal } = {}) {
+  const query = new URLSearchParams();
+  appendIf(query, "phone", phone);
+  appendIf(query, "user_id", userID);
+  appendIf(query, "event_type", eventType);
+  query.set("limit", String(limit ?? 20));
+  query.set("offset", String(offset ?? 0));
+  appendIf(query, "from", from);
+  appendIf(query, "to", to);
+  return request(`/api/v1/admin/auth-events?${query.toString()}`, { signal });
+}
+
 export function getLatestOtp(phone) {
   const query = new URLSearchParams({ phone });
   return request(`/api/v1/admin/testing/otp/latest?${query.toString()}`, {

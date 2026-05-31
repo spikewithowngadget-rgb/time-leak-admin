@@ -1,7 +1,19 @@
 import { createAd, deleteAd, listAds, updateAd } from "./api.js";
-import { getSessionUser, logout, redirectToLogin, requireAuthOrRedirect } from "./auth.js";
-import { applyTranslations, getLanguage, initLanguageSelect, t } from "./i18n.js";
-import { clearChildren, closeDialog, copyText, formatDateTime, formatNumber, hostnameFromURL, isValidHttpURL, mapErrorMessage, openDialog, setButtonPending, showToast } from "./ui.js";
+import { redirectToLogin } from "./auth.js";
+import { getLanguage, t } from "./i18n.js";
+import {
+  clearChildren,
+  closeDialog,
+  copyText,
+  formatDateTime,
+  formatNumber,
+  hostnameFromURL,
+  isValidHttpURL,
+  mapErrorMessage,
+  openDialog,
+  setButtonPending,
+  showToast,
+} from "./ui.js";
 
 const state = {
   limit: 10,
@@ -12,6 +24,7 @@ const state = {
   visibleAds: [],
   searchTerm: "",
   isLoading: true,
+  loadedOnce: false,
   selectedAdID: "",
   editorMode: "create",
   editingAd: null,
@@ -19,100 +32,89 @@ const state = {
   fetchSequence: 0,
 };
 
-const elements = {
-  languageSelect: document.getElementById("language-select"),
-  logoutButton: document.getElementById("logout-button"),
-  searchInput: document.getElementById("search-input"),
+let elements = {};
 
-  statTotal: document.getElementById("stat-total"),
-  statLoaded: document.getElementById("stat-loaded"),
-  statActive: document.getElementById("stat-active"),
-  statInactive: document.getElementById("stat-inactive"),
+function mount(root) {
+  elements = {
+    statTotal: document.getElementById("stat-total"),
+    statLoaded: document.getElementById("stat-loaded"),
+    statActive: document.getElementById("stat-active"),
+    statInactive: document.getElementById("stat-inactive"),
 
-  sessionUserBadge: document.getElementById("session-user-badge"),
+    tablePanel: root.querySelector(".table-panel"),
+    tablePanelSummary: document.getElementById("table-panel-summary"),
+    refreshButton: document.getElementById("refresh-button"),
+    openCreateButton: document.getElementById("open-create-dialog"),
+    openCreateEmptyButton: document.getElementById("open-create-empty"),
+    filterSelect: document.getElementById("active-filter"),
+    limitSelect: document.getElementById("limit-select"),
+    tableBody: document.getElementById("ads-table-body"),
+    tableEmpty: document.getElementById("table-empty"),
+    paginationInfo: document.getElementById("pagination-info"),
+    prevButton: document.getElementById("prev-page"),
+    nextButton: document.getElementById("next-page"),
+    offsetInput: document.getElementById("offset-input"),
+    offsetApply: document.getElementById("offset-apply"),
 
-  tablePanel: document.querySelector(".table-panel"),
-  tablePanelSummary: document.getElementById("table-panel-summary"),
-  refreshButton: document.getElementById("refresh-button"),
-  openCreateButton: document.getElementById("open-create-dialog"),
-  openCreateEmptyButton: document.getElementById("open-create-empty"),
-  filterSelect: document.getElementById("active-filter"),
-  limitSelect: document.getElementById("limit-select"),
-  tableBody: document.getElementById("ads-table-body"),
-  tableEmpty: document.getElementById("table-empty"),
-  paginationInfo: document.getElementById("pagination-info"),
-  prevButton: document.getElementById("prev-page"),
-  nextButton: document.getElementById("next-page"),
-  offsetInput: document.getElementById("offset-input"),
-  offsetApply: document.getElementById("offset-apply"),
+    inspectorEmpty: document.getElementById("inspector-empty"),
+    inspectorCard: document.getElementById("inspector-card"),
+    inspectorMedia: document.getElementById("inspector-media"),
+    inspectorImage: document.getElementById("inspector-image"),
+    inspectorFallback: document.getElementById("inspector-fallback"),
+    inspectorTitle: document.getElementById("inspector-title"),
+    inspectorID: document.getElementById("inspector-id"),
+    inspectorTarget: document.getElementById("inspector-target"),
+    inspectorImageLink: document.getElementById("inspector-image-link"),
+    inspectorStatus: document.getElementById("inspector-status"),
+    inspectorStatusText: document.getElementById("inspector-status-text"),
+    inspectorCreated: document.getElementById("inspector-created"),
+    inspectorUpdated: document.getElementById("inspector-updated"),
+    inspectorCopyLink: document.getElementById("inspector-copy-link"),
+    inspectorEdit: document.getElementById("inspector-edit"),
+    inspectorDelete: document.getElementById("inspector-delete"),
 
-  inspectorEmpty: document.getElementById("inspector-empty"),
-  inspectorCard: document.getElementById("inspector-card"),
-  inspectorMedia: document.getElementById("inspector-media"),
-  inspectorImage: document.getElementById("inspector-image"),
-  inspectorFallback: document.getElementById("inspector-fallback"),
-  inspectorTitle: document.getElementById("inspector-title"),
-  inspectorID: document.getElementById("inspector-id"),
-  inspectorTarget: document.getElementById("inspector-target"),
-  inspectorImageLink: document.getElementById("inspector-image-link"),
-  inspectorStatus: document.getElementById("inspector-status"),
-  inspectorStatusText: document.getElementById("inspector-status-text"),
-  inspectorCreated: document.getElementById("inspector-created"),
-  inspectorUpdated: document.getElementById("inspector-updated"),
-  inspectorCopyLink: document.getElementById("inspector-copy-link"),
-  inspectorEdit: document.getElementById("inspector-edit"),
-  inspectorDelete: document.getElementById("inspector-delete"),
+    editorDialog: document.getElementById("editor-dialog"),
+    editorTitle: document.getElementById("editor-title"),
+    editorSubtitle: document.getElementById("editor-subtitle"),
+    editorForm: document.getElementById("editor-form"),
+    editorClose: document.getElementById("editor-close"),
+    editorTitleInput: document.getElementById("editor-title-input"),
+    editorImageInput: document.getElementById("editor-image-input"),
+    editorTargetInput: document.getElementById("editor-target-input"),
+    editorActiveInput: document.getElementById("editor-active-input"),
+    editorPreviewMedia: document.getElementById("editor-preview-media"),
+    editorPreviewImage: document.getElementById("editor-preview-image"),
+    editorPreviewFallback: document.getElementById("editor-preview-fallback"),
+    editorPreviewTitle: document.getElementById("editor-preview-title"),
+    editorPreviewHost: document.getElementById("editor-preview-host"),
+    editorPreviewStatus: document.getElementById("editor-preview-status"),
+    editorCancel: document.getElementById("editor-cancel"),
+    editorSubmit: document.getElementById("editor-submit"),
 
-  editorDialog: document.getElementById("editor-dialog"),
-  editorTitle: document.getElementById("editor-title"),
-  editorSubtitle: document.getElementById("editor-subtitle"),
-  editorForm: document.getElementById("editor-form"),
-  editorTitleInput: document.getElementById("editor-title-input"),
-  editorImageInput: document.getElementById("editor-image-input"),
-  editorImageInlinePreview: document.getElementById("editor-image-inline-preview"),
-  editorImageInlineImage: document.getElementById("editor-image-inline-image"),
-  editorImageInlineFallback: document.getElementById("editor-image-inline-fallback"),
-  editorTargetInput: document.getElementById("editor-target-input"),
-  editorActiveInput: document.getElementById("editor-active-input"),
-  editorPreviewMedia: document.getElementById("editor-preview-media"),
-  editorPreviewImage: document.getElementById("editor-preview-image"),
-  editorPreviewFallback: document.getElementById("editor-preview-fallback"),
-  editorPreviewTitle: document.getElementById("editor-preview-title"),
-  editorPreviewHost: document.getElementById("editor-preview-host"),
-  editorPreviewStatus: document.getElementById("editor-preview-status"),
-  editorCancel: document.getElementById("editor-cancel"),
-  editorSubmit: document.getElementById("editor-submit"),
+    deleteDialog: document.getElementById("delete-dialog"),
+    deleteTarget: document.getElementById("delete-target"),
+    deleteCancel: document.getElementById("delete-cancel"),
+    deleteConfirm: document.getElementById("delete-confirm"),
+  };
 
-  deleteDialog: document.getElementById("delete-dialog"),
-  deleteTarget: document.getElementById("delete-target"),
-  deleteCancel: document.getElementById("delete-cancel"),
-  deleteConfirm: document.getElementById("delete-confirm"),
-};
-
-boot();
-
-function boot() {
-  if (!requireAuthOrRedirect()) {
-    return;
-  }
-
-  initLanguageSelect(elements.languageSelect);
-  applyTranslations(document);
-  hydrateSessionContext();
   syncControls();
   bindEvents();
   renderAll();
-  void fetchAds();
 }
 
-function hydrateSessionContext() {
-  elements.sessionUserBadge.textContent = getSessionUser();
+function activate() {
+  if (!state.loadedOnce) {
+    void fetchAds();
+  }
+}
+
+function onSearch(term) {
+  state.searchTerm = String(term || "").trim().toLowerCase();
+  syncVisibleAds();
+  renderAll();
 }
 
 function bindEvents() {
-  elements.logoutButton.addEventListener("click", logout);
-  elements.searchInput.addEventListener("input", onSearchInput);
-
   elements.refreshButton.addEventListener("click", () => {
     void fetchAds();
   });
@@ -141,7 +143,6 @@ function bindEvents() {
     if (state.offset + state.limit >= state.total) {
       return;
     }
-
     state.offset += state.limit;
     syncControls();
     void fetchAds();
@@ -171,18 +172,15 @@ function bindEvents() {
   });
 
   elements.editorForm.addEventListener("submit", onEditorSubmit);
-  elements.editorCancel.addEventListener("click", () => {
-    closeDialog(elements.editorDialog);
-  });
+  elements.editorCancel.addEventListener("click", () => closeDialog(elements.editorDialog));
+  elements.editorClose.addEventListener("click", () => closeDialog(elements.editorDialog));
 
   elements.editorTitleInput.addEventListener("input", syncEditorPreview);
   elements.editorImageInput.addEventListener("input", syncEditorPreview);
   elements.editorTargetInput.addEventListener("input", syncEditorPreview);
   elements.editorActiveInput.addEventListener("change", syncEditorPreview);
 
-  elements.deleteCancel.addEventListener("click", () => {
-    closeDialog(elements.deleteDialog);
-  });
+  elements.deleteCancel.addEventListener("click", () => closeDialog(elements.deleteDialog));
   elements.deleteConfirm.addEventListener("click", onDeleteConfirm);
 
   bindDialogBackdrop(elements.editorDialog, () => closeDialog(elements.editorDialog));
@@ -192,7 +190,6 @@ function bindEvents() {
   elements.deleteDialog.addEventListener("close", resetDeleteState);
 
   document.addEventListener("languagechange", () => {
-    hydrateSessionContext();
     syncControls();
     syncEditorDialogCopy();
     renderAll();
@@ -207,28 +204,19 @@ function bindDialogBackdrop(dialog, onClose) {
   });
 }
 
-function onSearchInput(event) {
-  state.searchTerm = String(event.target.value || "").trim().toLowerCase();
-  syncVisibleAds();
-  renderAll();
-}
-
 function syncControls() {
   elements.filterSelect.value = state.activeFilter;
   elements.limitSelect.value = String(state.limit);
   elements.offsetInput.value = String(state.offset);
-  elements.searchInput.value = state.searchTerm;
 }
 
 function activeFilterToParam(value) {
   if (value === "active") {
     return true;
   }
-
   if (value === "inactive") {
     return false;
   }
-
   return undefined;
 }
 
@@ -249,12 +237,12 @@ async function fetchAds() {
 
     state.ads = normalizeAdsResponse(response);
     state.total = normalizeTotalResponse(response, state.ads.length);
+    state.loadedOnce = true;
     syncVisibleAds();
   } catch (error) {
     if (requestID !== state.fetchSequence) {
       return;
     }
-
     handleAPIError(error);
   } finally {
     if (requestID === state.fetchSequence) {
@@ -280,7 +268,6 @@ function normalizeAdsResponse(payload) {
       : Array.isArray(payload)
         ? payload
         : [];
-
   return raw.map(normalizeAd).filter((ad) => ad.id);
 }
 
@@ -289,7 +276,6 @@ function normalizeTotalResponse(payload, fallback) {
   if (Number.isFinite(candidate) && candidate >= 0) {
     return candidate;
   }
-
   return fallback;
 }
 
@@ -309,15 +295,12 @@ function toBoolean(value) {
   if (typeof value === "boolean") {
     return value;
   }
-
   if (typeof value === "string") {
     return value === "true" || value === "1";
   }
-
   if (typeof value === "number") {
     return value > 0;
   }
-
   return false;
 }
 
@@ -338,7 +321,6 @@ function matchesSearch(ad, query) {
   ]
     .join(" ")
     .toLowerCase();
-
   return haystack.includes(query);
 }
 
@@ -346,7 +328,6 @@ function ensureSelection() {
   if (state.visibleAds.some((ad) => ad.id === state.selectedAdID)) {
     return;
   }
-
   state.selectedAdID = state.visibleAds[0]?.id || "";
 }
 
@@ -385,12 +366,7 @@ function renderTable() {
   elements.tableEmpty.hidden = true;
 
   if (state.isLoading && state.ads.length === 0) {
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-    cell.colSpan = 7;
-    cell.textContent = t("loading_ads");
-    row.appendChild(cell);
-    elements.tableBody.appendChild(row);
+    appendSkeletonRows();
     return;
   }
 
@@ -404,6 +380,19 @@ function renderTable() {
   });
 }
 
+function appendSkeletonRows() {
+  for (let i = 0; i < 5; i += 1) {
+    const row = document.createElement("tr");
+    row.className = "skeleton-row";
+    for (let c = 0; c < 7; c += 1) {
+      const cell = document.createElement("td");
+      cell.appendChild(document.createElement("span")).className = "skeleton-bar";
+      row.appendChild(cell);
+    }
+    elements.tableBody.appendChild(row);
+  }
+}
+
 function renderRow(ad, index) {
   const language = getLanguage();
   const row = document.createElement("tr");
@@ -413,9 +402,7 @@ function renderRow(ad, index) {
   }
 
   row.tabIndex = 0;
-  row.addEventListener("click", () => {
-    selectAd(ad.id);
-  });
+  row.addEventListener("click", () => selectAd(ad.id));
   row.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -436,7 +423,7 @@ function renderRow(ad, index) {
   const statusCell = document.createElement("td");
   const statusButton = document.createElement("button");
   statusButton.type = "button";
-  statusButton.className = "status-chip";
+  statusButton.className = "status-chip status-toggle";
   applyStatusChip(statusButton, ad.is_active);
   statusButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -482,19 +469,15 @@ function renderRow(ad, index) {
 function buildCampaignCell(ad) {
   const wrap = document.createElement("div");
   wrap.className = "campaign-cell";
-
   wrap.appendChild(createMediaThumb(ad.title, ad.image_url));
 
   const copy = document.createElement("div");
   copy.className = "table-stack";
-
   const title = document.createElement("div");
   title.className = "primary-text";
   title.textContent = ad.title || "-";
-
   copy.appendChild(title);
   wrap.appendChild(copy);
-
   return wrap;
 }
 
@@ -514,9 +497,7 @@ function buildDestinationCell(ad) {
   link.rel = "noopener noreferrer";
   link.title = ad.target_url;
   link.textContent = host;
-  link.addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
+  link.addEventListener("click", (event) => event.stopPropagation());
   return link;
 }
 
@@ -545,7 +526,6 @@ function createMediaThumb(title, imageURL) {
     });
     wrapper.appendChild(image);
   }
-
   return wrapper;
 }
 
@@ -615,7 +595,6 @@ function setLink(link, value) {
     link.removeAttribute("title");
     return;
   }
-
   link.href = value;
   link.title = value;
   link.textContent = hostnameFromURL(value) || value;
@@ -626,7 +605,6 @@ async function onCopySelectedLink() {
   if (!ad?.target_url) {
     return;
   }
-
   try {
     await copyText(ad.target_url);
     showToast("success", t("toast_copied"));
@@ -640,6 +618,7 @@ function openCreateDialog() {
   state.editingAd = null;
   elements.editorForm.reset();
   elements.editorActiveInput.checked = true;
+  clearFieldErrors();
   syncEditorDialogCopy();
   syncEditorPreview();
   openDialog(elements.editorDialog);
@@ -653,6 +632,7 @@ function openEditDialog(ad) {
   elements.editorImageInput.value = ad.image_url || "";
   elements.editorTargetInput.value = ad.target_url || "";
   elements.editorActiveInput.checked = Boolean(ad.is_active);
+  clearFieldErrors();
   syncEditorDialogCopy();
   syncEditorPreview();
   openDialog(elements.editorDialog);
@@ -671,26 +651,52 @@ function syncEditorPreview() {
   const imageURL = elements.editorImageInput.value.trim();
   const targetURL = elements.editorTargetInput.value.trim();
 
-  setMediaPreview(
-    elements.editorImageInlinePreview,
-    elements.editorImageInlineImage,
-    elements.editorImageInlineFallback,
-    title,
-    imageURL,
-  );
   setMediaPreview(elements.editorPreviewMedia, elements.editorPreviewImage, elements.editorPreviewFallback, title, imageURL);
   elements.editorPreviewTitle.textContent = title || t("field_title_placeholder");
   elements.editorPreviewHost.textContent = hostnameFromURL(targetURL) || t("field_target_url");
   applyStatusChip(elements.editorPreviewStatus, elements.editorActiveInput.checked);
 }
 
+function fieldErrorNode(field) {
+  return document.querySelector(`[data-error-for="${field}"]`);
+}
+
+function clearFieldErrors() {
+  ["title", "image_url", "target_url"].forEach((field) => {
+    const node = fieldErrorNode(field);
+    if (node) {
+      node.hidden = true;
+      node.textContent = "";
+    }
+  });
+  elements.editorTitleInput.classList.remove("has-error");
+  elements.editorImageInput.classList.remove("has-error");
+  elements.editorTargetInput.classList.remove("has-error");
+}
+
+function showFieldError(field, message) {
+  const node = fieldErrorNode(field);
+  if (node) {
+    node.textContent = message;
+    node.hidden = false;
+  }
+  const inputMap = {
+    title: elements.editorTitleInput,
+    image_url: elements.editorImageInput,
+    target_url: elements.editorTargetInput,
+  };
+  inputMap[field]?.classList.add("has-error");
+}
+
 async function onEditorSubmit(event) {
   event.preventDefault();
 
   const payload = readEditorPayload();
-  const validationError = validatePayload(payload);
-  if (validationError) {
-    showToast("error", validationError);
+  const errors = validatePayload(payload);
+  clearFieldErrors();
+  if (errors.length > 0) {
+    errors.forEach(({ field, message }) => showFieldError(field, message));
+    showToast("error", errors[0].message);
     return;
   }
 
@@ -707,7 +713,6 @@ async function onEditorSubmit(event) {
         showToast("info", t("toast_no_changes"));
         return;
       }
-
       await updateAd(state.editingAd.id, patch);
       showToast("success", t("toast_saved"));
     }
@@ -732,48 +737,37 @@ function readEditorPayload() {
 }
 
 function validatePayload(payload) {
+  const errors = [];
   if (!payload.title) {
-    return t("validation_required", { field: t("field_title") });
+    errors.push({ field: "title", message: t("validation_required", { field: t("field_title") }) });
   }
-
   if (!payload.image_url) {
-    return t("validation_required", { field: t("field_image_url") });
+    errors.push({ field: "image_url", message: t("validation_required", { field: t("field_image_url") }) });
+  } else if (!isValidHttpURL(payload.image_url)) {
+    errors.push({ field: "image_url", message: t("validation_url", { field: t("field_image_url") }) });
   }
-
-  if (!isValidHttpURL(payload.image_url)) {
-    return t("validation_url", { field: t("field_image_url") });
-  }
-
   if (!payload.target_url) {
-    return t("validation_required", { field: t("field_target_url") });
+    errors.push({ field: "target_url", message: t("validation_required", { field: t("field_target_url") }) });
+  } else if (!isValidHttpURL(payload.target_url)) {
+    errors.push({ field: "target_url", message: t("validation_url", { field: t("field_target_url") }) });
   }
-
-  if (!isValidHttpURL(payload.target_url)) {
-    return t("validation_url", { field: t("field_target_url") });
-  }
-
-  return "";
+  return errors;
 }
 
 function buildPatch(original, next) {
   const patch = {};
-
   if (next.title !== original.title) {
     patch.title = next.title;
   }
-
   if (next.image_url !== original.image_url) {
     patch.image_url = next.image_url;
   }
-
   if (next.target_url !== original.target_url) {
     patch.target_url = next.target_url;
   }
-
   if (next.is_active !== original.is_active) {
     patch.is_active = next.is_active;
   }
-
   return patch;
 }
 
@@ -782,6 +776,7 @@ function resetEditorState() {
   state.editingAd = null;
   elements.editorForm.reset();
   elements.editorActiveInput.checked = true;
+  clearFieldErrors();
   syncEditorDialogCopy();
   syncEditorPreview();
 }
@@ -796,7 +791,6 @@ async function onDeleteConfirm() {
   if (!state.deletingAd) {
     return;
   }
-
   try {
     setButtonPending(elements.deleteConfirm, true, `${t("delete_confirm")}...`);
     await deleteAd(state.deletingAd.id);
@@ -838,7 +832,6 @@ function handleAPIError(error) {
     redirectToLogin();
     return;
   }
-
   showToast("error", mapErrorMessage(error, t));
 }
 
@@ -862,7 +855,6 @@ function setMediaPreview(container, image, fallback, title, url) {
     if (image.dataset.src !== imageURL) {
       return;
     }
-
     container.classList.add("has-image");
     image.hidden = false;
   };
@@ -871,7 +863,6 @@ function setMediaPreview(container, image, fallback, title, url) {
     if (image.dataset.src !== imageURL) {
       return;
     }
-
     container.classList.remove("has-image");
     image.hidden = true;
     image.removeAttribute("src");
@@ -885,7 +876,6 @@ function initialsFromTitle(title) {
   if (!source) {
     return "TL";
   }
-
   const parts = source.split(/\s+/).slice(0, 2);
   const value = parts.map((part) => part[0]).join("").toUpperCase();
   return value || source.slice(0, 2).toUpperCase();
@@ -896,6 +886,16 @@ function toPositiveInteger(value, fallback) {
   if (!Number.isFinite(parsed) || parsed < 0) {
     return fallback;
   }
-
   return parsed;
 }
+
+export default {
+  id: "ads",
+  titleKey: "dashboard_title",
+  subtitleKey: "dashboard_subtitle",
+  searchable: true,
+  searchPlaceholderKey: "search_placeholder",
+  mount,
+  activate,
+  onSearch,
+};

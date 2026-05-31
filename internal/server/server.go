@@ -12,7 +12,7 @@ import (
 )
 
 func NewHTTPServer(cfg config.Config, logger *slog.Logger) *http.Server {
-	repo := repository.NewRuntimeConfigRepository(cfg.APIBaseURL)
+	repo := repository.NewRuntimeConfigRepository(cfg.APIBaseURL, cfg.YandexMapsAPIKey)
 	runtimeSvc := service.NewRuntimeConfigService(repo)
 	h := handler.NewHandler(cfg, runtimeSvc, logger)
 

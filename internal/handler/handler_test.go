@@ -83,7 +83,7 @@ func TestPrivacyPolicyReturns404WhenFileMissing(t *testing.T) {
 func newTestHandler(t *testing.T, cfg config.Config) *Handler {
 	t.Helper()
 
-	repo := repository.NewRuntimeConfigRepository("https://api.test")
+	repo := repository.NewRuntimeConfigRepository("https://api.test", "test-maps-key")
 	svc := service.NewRuntimeConfigService(repo)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 

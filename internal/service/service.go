@@ -17,9 +17,11 @@ func NewRuntimeConfigService(repo *repository.RuntimeConfigRepository) *RuntimeC
 
 func (s *RuntimeConfigService) RuntimeConfigJS() (string, error) {
 	cfg := struct {
-		APIBaseURL string `json:"API_BASE_URL"`
+		APIBaseURL       string `json:"API_BASE_URL"`
+		YandexMapsAPIKey string `json:"YANDEX_MAPS_API_KEY"`
 	}{
-		APIBaseURL: s.repo.APIBaseURL(),
+		APIBaseURL:       s.repo.APIBaseURL(),
+		YandexMapsAPIKey: s.repo.YandexMapsAPIKey(),
 	}
 
 	encoded, err := json.Marshal(cfg)
