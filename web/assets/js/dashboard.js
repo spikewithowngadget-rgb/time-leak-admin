@@ -4,8 +4,8 @@ import { debounce } from "./ui.js";
 
 import overview from "./overview.js";
 import ads from "./ads.js";
-import geo from "./analytics.js";
-import devices from "./devices.js";
+import geo from "./analytics.js?v=20260531-yandex-v21";
+import devices from "./devices.js?v=20260531-yandex-v21";
 import authEvents from "./auth-events.js";
 import settings from "./settings.js";
 

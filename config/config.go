@@ -11,7 +11,7 @@ const (
 	defaultStaticDir       = "web"
 	defaultPrivacyPDFPath  = "offerta/time-leak-offerta.pdf"
 	defaultShutdownTimeout = 10 * time.Second
-	// defaultYandexMapsAPIKey is the project Yandex Maps JS API v3 key. It is a
+	// defaultYandexMapsAPIKey is the project Yandex Maps JavaScript API key. It is a
 	// browser-side key (already exposed to clients via the map script URL) and
 	// can be overridden per-environment with YANDEX_MAPS_API_KEY.
 	defaultYandexMapsAPIKey = "adad526e-4686-40e0-9664-f019d19a6ede"
