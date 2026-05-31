@@ -14,7 +14,7 @@ const (
 	// defaultYandexMapsAPIKey is the project Yandex Maps JS API v3 key. It is a
 	// browser-side key (already exposed to clients via the map script URL) and
 	// can be overridden per-environment with YANDEX_MAPS_API_KEY.
-	defaultYandexMapsAPIKey = "adad526e-4686-40e0-9664-f019d19a6ede"
+	defaultYandexMapsAPIKey = "3787af06-8359-4eae-9068-90a9b73487d3"
 )
 
 type Config struct {
