@@ -46,7 +46,7 @@ func (h *Handler) RuntimeConfigJS(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	setNoStoreHeaders(w)
 	_, _ = w.Write([]byte(payload))
 }
 
@@ -101,6 +101,7 @@ func (h *Handler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Assets(w http.ResponseWriter, r *http.Request) {
+	setNoStoreHeaders(w)
 	h.staticFS.ServeHTTP(w, r)
 }
 
@@ -126,6 +127,7 @@ func (h *Handler) serveStaticPage(w http.ResponseWriter, r *http.Request, fileNa
 		return
 	}
 
+	setNoStoreHeaders(w)
 	http.ServeFile(w, r, filePath)
 }
 
@@ -136,4 +138,10 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
+}
+
+func setNoStoreHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 }

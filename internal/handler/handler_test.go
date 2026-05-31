@@ -80,6 +80,58 @@ func TestPrivacyPolicyReturns404WhenFileMissing(t *testing.T) {
 	}
 }
 
+func TestStaticPageDisablesCache(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "index.html"), []byte("<!doctype html><title>ok</title>"), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	h := newTestHandler(t, config.Config{
+		StaticDir:      tempDir,
+		PrivacyPDFPath: filepath.Join(tempDir, "privacy.pdf"),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+	rec := httptest.NewRecorder()
+
+	h.DashboardPage(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+	assertNoStore(t, rec.Result())
+}
+
+func TestAssetsDisableCache(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	assetDir := filepath.Join(tempDir, "assets", "css")
+	if err := os.MkdirAll(assetDir, 0o755); err != nil {
+		t.Fatalf("mkdir assets: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(assetDir, "styles.css"), []byte("body{margin:0}"), 0o644); err != nil {
+		t.Fatalf("write css: %v", err)
+	}
+
+	h := newTestHandler(t, config.Config{
+		StaticDir:      tempDir,
+		PrivacyPDFPath: filepath.Join(tempDir, "privacy.pdf"),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/assets/css/styles.css", nil)
+	rec := httptest.NewRecorder()
+
+	h.Assets(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+	assertNoStore(t, rec.Result())
+}
+
 func newTestHandler(t *testing.T, cfg config.Config) *Handler {
 	t.Helper()
 
@@ -88,4 +140,20 @@ func newTestHandler(t *testing.T, cfg config.Config) *Handler {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	return NewHandler(cfg, svc, logger)
+}
+
+func assertNoStore(t *testing.T, res *http.Response) {
+	t.Helper()
+	defer res.Body.Close()
+
+	cacheControl := res.Header.Get("Cache-Control")
+	if !strings.Contains(cacheControl, "no-store") || !strings.Contains(cacheControl, "max-age=0") {
+		t.Fatalf("unexpected Cache-Control: %q", cacheControl)
+	}
+	if got := res.Header.Get("Pragma"); got != "no-cache" {
+		t.Fatalf("unexpected Pragma: %q", got)
+	}
+	if got := res.Header.Get("Expires"); got != "0" {
+		t.Fatalf("unexpected Expires: %q", got)
+	}
 }
