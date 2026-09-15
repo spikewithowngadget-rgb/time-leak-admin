@@ -26,19 +26,12 @@ Server starts at:
 - `PORT` (default: `8080`)
 - `API_BASE_URL` (default: `https://api.timeleak.kz`)
 - `STATIC_DIR` (default: `web`)
-- `PRIVACY_PDF_PATH` (default: `offerta/time-leak-offerta.pdf`)
 - `SHUTDOWN_TIMEOUT_SECONDS` (default: `10`)
 
 Example:
 
 ```bash
 PORT=8080 API_BASE_URL=https://api.timeleak.kz go run ./cmd/admin
-```
-
-Privacy policy PDF example:
-
-```bash
-PRIVACY_PDF_PATH=offerta/time-leak-offerta.pdf go run ./cmd/admin
 ```
 
 ## Login Flow
@@ -87,9 +80,9 @@ PRIVACY_PDF_PATH=offerta/time-leak-offerta.pdf go run ./cmd/admin
 
 1. Health check
    - `GET /health` returns `200` and `{ "status": "ok" }`
-2. Privacy policy PDF
+2. Privacy policy
    - `GET /privacy` returns `200`
-   - browser opens `time-leak-offerta.pdf` inline by URL
+   - browser opens a public HTML page
 3. Runtime config
    - Open `/config.js` and verify `API_BASE_URL`
 4. Login success

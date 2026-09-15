@@ -23,7 +23,6 @@ func TestSecurityHeadersAllowCrossOriginReferrerOrigin(t *testing.T) {
 	srv := NewHTTPServer(config.Config{
 		Port:             "0",
 		StaticDir:        tempDir,
-		PrivacyPDFPath:   filepath.Join(tempDir, "privacy.pdf"),
 		APIBaseURL:       "https://api.test",
 		YandexMapsAPIKey: "test-maps-key",
 	}, slog.New(slog.NewTextHandler(io.Discard, nil)))

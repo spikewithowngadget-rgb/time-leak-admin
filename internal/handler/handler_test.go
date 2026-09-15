@@ -15,20 +15,18 @@ import (
 	"time-leak-admin/internal/service"
 )
 
-func TestPrivacyPolicyServesInlinePDF(t *testing.T) {
+func TestPrivacyPolicyServesHTMLPage(t *testing.T) {
 	t.Parallel()
 
 	tempDir := t.TempDir()
-	pdfPath := filepath.Join(tempDir, "privacy.pdf")
-	pdfPayload := []byte("%PDF-1.4\nfake pdf payload")
+	htmlPayload := []byte("<!doctype html><html><body><h1>Политика конфиденциальности мобильного приложения TIMELEAK</h1></body></html>")
 
-	if err := os.WriteFile(pdfPath, pdfPayload, 0o644); err != nil {
-		t.Fatalf("write pdf: %v", err)
+	if err := os.WriteFile(filepath.Join(tempDir, "privacy.html"), htmlPayload, 0o644); err != nil {
+		t.Fatalf("write privacy page: %v", err)
 	}
 
 	h := newTestHandler(t, config.Config{
-		StaticDir:      tempDir,
-		PrivacyPDFPath: pdfPath,
+		StaticDir: tempDir,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/privacy", nil)
@@ -43,12 +41,12 @@ func TestPrivacyPolicyServesInlinePDF(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, res.StatusCode)
 	}
 
-	if got := res.Header.Get("Content-Type"); !strings.HasPrefix(got, "application/pdf") {
-		t.Fatalf("expected pdf content type, got %q", got)
+	if got := res.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
+		t.Fatalf("expected html content type, got %q", got)
 	}
 
-	if got := res.Header.Get("Content-Disposition"); got != `inline; filename="privacy.pdf"` {
-		t.Fatalf("unexpected content disposition: %q", got)
+	if got := res.Header.Get("Content-Disposition"); got != "" {
+		t.Fatalf("expected empty content disposition, got %q", got)
 	}
 
 	body, err := io.ReadAll(res.Body)
@@ -56,7 +54,7 @@ func TestPrivacyPolicyServesInlinePDF(t *testing.T) {
 		t.Fatalf("read body: %v", err)
 	}
 
-	if string(body) != string(pdfPayload) {
+	if string(body) != string(htmlPayload) {
 		t.Fatalf("unexpected body: %q", string(body))
 	}
 }
@@ -66,8 +64,7 @@ func TestPrivacyPolicyReturns404WhenFileMissing(t *testing.T) {
 
 	tempDir := t.TempDir()
 	h := newTestHandler(t, config.Config{
-		StaticDir:      tempDir,
-		PrivacyPDFPath: filepath.Join(tempDir, "missing.pdf"),
+		StaticDir: tempDir,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/privacy", nil)
@@ -89,8 +86,7 @@ func TestStaticPageDisablesCache(t *testing.T) {
 	}
 
 	h := newTestHandler(t, config.Config{
-		StaticDir:      tempDir,
-		PrivacyPDFPath: filepath.Join(tempDir, "privacy.pdf"),
+		StaticDir: tempDir,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
@@ -117,8 +113,7 @@ func TestAssetsDisableCache(t *testing.T) {
 	}
 
 	h := newTestHandler(t, config.Config{
-		StaticDir:      tempDir,
-		PrivacyPDFPath: filepath.Join(tempDir, "privacy.pdf"),
+		StaticDir: tempDir,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/assets/css/styles.css", nil)

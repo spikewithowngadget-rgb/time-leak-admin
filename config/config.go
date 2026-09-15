@@ -9,7 +9,6 @@ const (
 	defaultPort            = "8080"
 	defaultAPIBaseURL      = "https://api.timeleak.kz"
 	defaultStaticDir       = "web"
-	defaultPrivacyPDFPath  = "offerta/time-leak-offerta.pdf"
 	defaultShutdownTimeout = 10 * time.Second
 	// defaultYandexMapsAPIKey is the project Yandex Maps JS API v3 key. It is a
 	// browser-side key (already exposed to clients via the map script URL) and
@@ -21,7 +20,6 @@ type Config struct {
 	Port             string
 	APIBaseURL       string
 	StaticDir        string
-	PrivacyPDFPath   string
 	YandexMapsAPIKey string
 	ShutdownTimeout  time.Duration
 }
@@ -31,7 +29,6 @@ func Load() Config {
 		Port:             getEnv("PORT", defaultPort),
 		APIBaseURL:       getEnv("API_BASE_URL", defaultAPIBaseURL),
 		StaticDir:        getEnv("STATIC_DIR", defaultStaticDir),
-		PrivacyPDFPath:   getEnv("PRIVACY_PDF_PATH", defaultPrivacyPDFPath),
 		YandexMapsAPIKey: getEnv("YANDEX_MAPS_API_KEY", defaultYandexMapsAPIKey),
 		ShutdownTimeout:  defaultShutdownTimeout,
 	}
