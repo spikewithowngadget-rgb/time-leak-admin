@@ -82,11 +82,11 @@ export function requireAuthOrRedirect() {
 }
 
 export function redirectToLogin() {
-  window.location.assign("/login");
+  window.location.assign("/admin");
 }
 
 export function redirectToDashboard() {
-  window.location.assign("/dashboard");
+  window.location.assign("/admin/dashboard");
 }
 
 export function logout() {

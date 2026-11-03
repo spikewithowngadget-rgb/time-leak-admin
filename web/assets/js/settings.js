@@ -1,10 +1,12 @@
 import { logout, getSessionUser } from "./auth.js";
 import { getRuntimeConfig, getYandexMapsAPIKey } from "./config.js";
 import { getLanguage, setLanguage, t } from "./i18n.js";
+import { mountReminderSettings, activateReminderSettings } from "./reminders.js";
 
 let nodes = {};
 
 function mount(root) {
+  mountReminderSettings(root);
   nodes = {
     user: root.querySelector("#set-session-user"),
     apiBase: root.querySelector("#set-api-base"),
@@ -25,6 +27,7 @@ function mount(root) {
 
 function activate() {
   render();
+  activateReminderSettings();
 }
 
 function render() {

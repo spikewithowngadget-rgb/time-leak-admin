@@ -1,22 +1,85 @@
 # time-leak-admin
 
-TimeLeak жарнамаларын басқаруға арналған Admin Panel.
+TimeLeak user web client and administration server.
+
+The user client is built from `client/` into `web/app/`. The Go server serves
+its known browser routes and `/app-assets/*`, alongside the administration UI.
+Build the user client before deployment; the Go binary does not contain its assets.
+
+- `/` — user calendar; `/login`, `/register/*`, `/forgot-password/*` — user authentication
+- `/share/{token}` — public note, with server-rendered Open Graph metadata
+- `/admin` — administrator login
+- `/admin/dashboard` — administrator dashboard
+- `/dashboard`, `/admin/login`, `/login.html` — retained administration aliases
+- `/privacy`, `/health`, `/config.js` — existing public endpoints
+
+User and administrator sessions use separate localStorage keys. Administrator
+logout and expired sessions return to `/admin`.
 
 - Back-end: Go (`net/http`)
-- Front-end: Pure HTML + CSS + JavaScript modules (build step жоқ)
-- Тілдер: `KZ / RU / EN`
+- User front-end: React + TypeScript + Vite (build required)
+- Admin front-end: HTML + CSS + JavaScript modules (no build step)
+- User languages: `en / ru / zh / hi / fr / de / es / it / pt / ar` (Arabic RTL)
+- Admin languages: `KZ / RU / EN`
 - Server port: `8080` (әдепкі)
 
 ## Run
 
 ```bash
-go run ./cmd/admin
+cd client
+npm ci
+npm run build
+cd ..
+go run ./cmd
 ```
+
+For frontend development: `cd client && npm run dev`.
+Production builds use `/app-assets/`; the dev server serves `/`.
+Run `npm test` in `client/` and `go test ./...` in the repository root.
+See `DEPLOYMENT_WEB.md` for the frontend-only release/rollback procedure.
+The API, its port 8081, database and Flutter contract are unchanged.
+
+## User web client
+
+Phone/password sign-in, WhatsApp OTP registration/password reset, local-date
+calendar, recurring notes, upload/edit/delete/download/share, public imports,
+image/video/PDF/text/audio previews, camera and microphone recording, drag/drop,
+10 languages and an install manifest. UI notes caches and file blobs are cleared
+when the account changes. Refresh requests are serialized per page and, where
+Web Locks is available, across tabs. Temporary network failures retain sessions.
+
+`VITE_API_URL` defaults to `https://api.timeleak.kz`; never include service secrets
+in client environment variables. `VITE_MAX_FILE_MB` defaults to 100 as a browser
+upload guard; it does not impose a new server limit.
+
+The existing email OTP verification does not issue user-session tokens, so email
+sign-in is not offered. The API is left untouched per the deployment constraint.
+Audio-title processing depends on the existing server capabilities.
+Original Flutter assets/ARB were not supplied locally; temporary SVG illustrations
+and translated strings are documented in `client/public/assets/README.md`.
+
+## Email reminders
+
+In **About → Email reminders**, users verify their mailbox through the existing
+Resend OTP service, explicitly enable reminders, and select the email language.
+The contact is separate from the phone account identity. The scheduler covers
+notes created in either Flutter or the web app.
+
+Administrators use **Settings → Email reminders** to set the global horizon
+(1–30 days, default 3), sending hour (default 09:00) and IANA timezone
+(default Asia/Almaty), or pause delivery. A horizon of 3 means daily messages
+3, 2 and 1 day before each occurrence. There is no manual bulk-send action.
+
+Backend setup and API documentation: `time-leak-back-end/docs/EMAIL_REMINDERS_RU.md`
+in the companion repository. This feature is an additive backend change; existing
+mobile sign-in and note contracts remain compatible.
+
+## Server addresses
 
 Server starts at:
 
-- `http://localhost:8080/login`
-- `http://localhost:8080/dashboard`
+- `http://localhost:8080/admin`
+- `http://localhost:8080/admin/dashboard`
 - `http://localhost:8080/health`
 - `http://localhost:8080/config.js`
 - `http://localhost:8080/privacy`
@@ -31,21 +94,21 @@ Server starts at:
 Example:
 
 ```bash
-PORT=8080 API_BASE_URL=https://api.timeleak.kz go run ./cmd/admin
+PORT=8080 API_BASE_URL=https://api.timeleak.kz go run ./cmd
 ```
 
 ## Login Flow
 
-1. Open `/login`.
-2. Enter admin credentials (example: `Admin` / `QRT123`).
+1. Open `/admin`.
+2. Enter the administrator credentials configured for the deployment.
 3. App sends `POST /api/v1/admin/auth/login` to `API_BASE_URL`.
 4. On success:
    - saves `access_token`
    - saves `refresh_token` when the API provides one
    - calculates and stores expiry timestamp (`now + expires_in_seconds`)
-   - redirects to `/dashboard`
+   - redirects to `/admin/dashboard`
 5. If the access token expires and a refresh token is available, the client refreshes the session through `POST /api/v1/auth/refresh` and retries the request.
-6. If refresh fails, or the API returns final `401/403`, session is cleared and user is redirected to `/login`.
+6. If refresh fails, or the API returns final `401/403`, session is cleared and user is redirected to `/admin`.
 
 ## API Integration Notes
 
@@ -87,7 +150,7 @@ PORT=8080 API_BASE_URL=https://api.timeleak.kz go run ./cmd/admin
    - Open `/config.js` and verify `API_BASE_URL`
 4. Login success
    - Use valid credentials
-   - Verify redirect to `/dashboard`
+   - Verify redirect to `/admin/dashboard`
    - Verify token + expiry saved in `localStorage`
 5. Login failure
    - Use invalid credentials
@@ -128,7 +191,7 @@ PORT=8080 API_BASE_URL=https://api.timeleak.kz go run ./cmd/admin
 
 ## Project Structure
 
-- `cmd/admin/main.go`
+- `cmd/main.go`
 - `internal/server/server.go`
 - `internal/handler/handler.go`
 - `internal/service/service.go`

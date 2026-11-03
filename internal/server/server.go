@@ -20,19 +20,22 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger) *http.Server {
 	mux.HandleFunc("/health", h.Health)
 	mux.HandleFunc("/config.js", h.RuntimeConfigJS)
 	mux.HandleFunc("/privacy", h.PrivacyPolicy)
-	mux.HandleFunc("/login", h.LoginPage)
+	mux.HandleFunc("/admin", h.LoginPage)
+	mux.HandleFunc("/admin/login", h.LoginPage)
+	mux.HandleFunc("/admin/dashboard", h.DashboardPage)
+	mux.HandleFunc("/admin/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/admin/" {
+			h.LoginPage(w, r)
+			return
+		}
+		h.NotFound(w, r)
+	})
 	mux.HandleFunc("/login.html", h.LoginPage)
 	mux.HandleFunc("/dashboard", h.DashboardPage)
 	mux.HandleFunc("/index.html", h.DashboardPage)
 	mux.HandleFunc("/assets/", h.Assets)
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			h.NotFound(w, r)
-			return
-		}
-
-		h.LoginPage(w, r)
-	})
+	mux.HandleFunc("/app-assets/", h.AppAssets)
+	mux.HandleFunc("/", h.UserApp)
 
 	wrapped := loggingMiddleware(logger, securityHeadersMiddleware(mux))
 

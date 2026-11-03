@@ -456,6 +456,27 @@
           <!-- ===================== SETTINGS ===================== -->
           <section class="view" data-view="settings" hidden>
             <div class="settings-grid">
+              <section class="panel reminder-settings" aria-labelledby="reminder-settings-title">
+                <div class="panel-head reminder-heading">
+                  <div><h2 id="reminder-settings-title" class="panel-title" data-i18n="set_rem_title"></h2><p class="panel-copy" data-i18n="set_rem_copy"></p></div>
+                  <button id="reminder-refresh" type="button" class="btn btn-secondary" data-i18n="refresh"></button>
+                </div>
+                <p id="reminder-feedback" class="panel-copy" role="status" aria-live="polite"></p>
+                <form id="reminder-settings-form">
+                  <fieldset id="reminder-settings-fields" disabled>
+                    <label class="reminder-enabled"><input id="reminder-enabled" name="enabled" type="checkbox" /><span data-i18n="set_rem_enabled"></span></label>
+                    <div class="reminder-form-grid">
+                      <div class="field"><label for="reminder-days-preset" data-i18n="set_rem_days"></label><select id="reminder-days-preset"><option value="1">1</option><option value="3">3</option><option value="7">7</option><option value="14">14</option><option value="30">30</option><option value="custom" data-i18n="set_rem_custom"></option></select></div>
+                      <div id="reminder-custom-days-field" class="field" hidden><label for="reminder-custom-days" data-i18n="set_rem_custom_days"></label><input id="reminder-custom-days" type="number" min="1" max="30" step="1" value="3" /></div>
+                      <div class="field"><label for="reminder-send-hour" data-i18n="set_rem_hour"></label><select id="reminder-send-hour"></select></div>
+                      <div class="field"><label for="reminder-timezone" data-i18n="set_rem_timezone"></label><input id="reminder-timezone" list="reminder-timezones" type="text" value="Asia/Almaty" required maxlength="100" autocomplete="off" spellcheck="false" /><datalist id="reminder-timezones"><option value="Asia/Almaty"></option><option value="Asia/Aqtau"></option><option value="Asia/Aqtobe"></option><option value="UTC"></option><option value="Europe/Moscow"></option></datalist></div>
+                    </div>
+                    <div class="reminder-schedule"><strong id="reminder-schedule-summary"></strong><p data-i18n="set_rem_schedule_rule"></p><p data-i18n="set_rem_language_rule"></p></div>
+                    <button id="reminder-save" type="submit" class="btn btn-primary" data-i18n="common_save"></button>
+                  </fieldset>
+                </form>
+                <div class="reminder-delivery-status" aria-live="polite"><h3 data-i18n="set_rem_status_title"></h3><p id="reminder-sender-status" class="panel-copy"></p><dl id="reminder-status-counts" class="reminder-status-counts"></dl><p id="reminder-last-sent" class="panel-copy"></p></div>
+              </section>
               <section class="panel">
                 <div class="panel-head"><h2 class="panel-title" data-i18n="set_session_title"></h2></div>
                 <dl class="kv-list">

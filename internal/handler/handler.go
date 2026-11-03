@@ -18,6 +18,7 @@ type Handler struct {
 	service  *service.RuntimeConfigService
 	logger   *slog.Logger
 	staticFS http.Handler
+	appFS    http.Handler
 }
 
 func NewHandler(cfg config.Config, service *service.RuntimeConfigService, logger *slog.Logger) *Handler {
@@ -29,6 +30,7 @@ func NewHandler(cfg config.Config, service *service.RuntimeConfigService, logger
 		service:  service,
 		logger:   logger,
 		staticFS: http.StripPrefix("/assets/", fileServer),
+		appFS:    http.StripPrefix("/app-assets/", http.FileServer(http.Dir(filepath.Join(cfg.StaticDir, "app")))),
 	}
 }
 
@@ -70,6 +72,62 @@ func (h *Handler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Assets(w http.ResponseWriter, r *http.Request) {
 	setNoStoreHeaders(w)
 	h.staticFS.ServeHTTP(w, r)
+}
+
+// UserApp serves only the known browser routes. In particular, a missing API
+// or association-file route must never silently receive the SPA HTML.
+func (h *Handler) UserApp(w http.ResponseWriter, r *http.Request) {
+	if !isUserAppRoute(r.URL.Path) {
+		h.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/share/") {
+		h.serveSharedApp(w, r)
+		return
+	}
+	h.serveStaticPage(w, r, filepath.Join("app", "index.html"))
+}
+
+func isUserAppRoute(path string) bool {
+	switch path {
+	case "/", "/onboarding", "/login", "/register", "/register/verify", "/register/password",
+		"/forgot-password", "/forgot-password/verify", "/forgot-password/new",
+		"/reset-password", "/reset-password/verify", "/reset-password/new", "/profile", "/about", "/language":
+		return true
+	}
+	if strings.HasPrefix(path, "/share/") {
+		token := strings.TrimSuffix(strings.TrimPrefix(path, "/share/"), "/")
+		return token != "" && !strings.Contains(token, "/")
+	}
+	return false
+}
+
+func (h *Handler) AppAssets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// The HTML entry is served through UserApp, and directory listings are not
+	// part of the public asset interface.
+	name := strings.TrimPrefix(r.URL.Path, "/app-assets/")
+	clean := filepath.Clean(name)
+	if name == "" || clean == "." || strings.HasPrefix(clean, "..") || filepath.IsAbs(clean) || strings.HasSuffix(clean, ".html") {
+		h.NotFound(w, r)
+		return
+	}
+	info, err := os.Stat(filepath.Join(h.cfg.StaticDir, "app", clean))
+	if err != nil || !info.Mode().IsRegular() {
+		h.NotFound(w, r)
+		return
+	}
+	setNoStoreHeaders(w)
+	h.appFS.ServeHTTP(w, r)
 }
 
 func (h *Handler) NotFound(w http.ResponseWriter, _ *http.Request) {

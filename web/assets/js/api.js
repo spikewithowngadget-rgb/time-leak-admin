@@ -196,6 +196,18 @@ export function login(username, password) {
   });
 }
 
+export function getReminderSettings() {
+  return request("/api/v1/admin/reminders/settings");
+}
+
+export function updateReminderSettings(settings) {
+  return request("/api/v1/admin/reminders/settings", { method: "PUT", body: settings });
+}
+
+export function getReminderStatus() {
+  return request("/api/v1/admin/reminders/status");
+}
+
 export function listAds({ limit, offset, active, signal }) {
   const query = new URLSearchParams();
   query.set("limit", String(limit));
